@@ -46,7 +46,6 @@ contract ClaimFaucet is DltToken{
             currentUser.lastClaimTime = block.timestamp;
             currentUser.totalClaimed = CLAIMABLE_AMOUNT;
 
-            users[_address] = currentUser;
 
             emit TokenClaimSuccessful(_address, CLAIMABLE_AMOUNT, block.timestamp);
         }

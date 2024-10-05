@@ -104,7 +104,7 @@ describe("Claim_Faucet_Factory", function () {
       await claimFaucetFactory.connect(deployer).deployClaimFaucet(token1.name, token1.symbol);
       await claimFaucetFactory.connect(otherAccount).deployClaimFaucet(token2.name, token2.symbol);
 
-      const AllDeployedContracts = await claimFaucetFactory.getAllContractsDeployed();
+      const AllDeployedContracts = await claimFaucetFactory.getAllContractDeployed();
 
       expect(AllDeployedContracts.length).to.be.equal(2)
 
