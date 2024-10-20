@@ -104,7 +104,6 @@ describe("ClaimFaucetFactory", function () {
     // Mint tokens to the ClaimFaucet (mock)
     await mockToken.transfer(deployedAddress, 100);
 
-    // User1 claims tokens
     await claimFaucetFactory.connect(user1).claimFaucetFromContract(deployedAddress);
 
     const balance = await mockToken.balanceOf(user1.address);
