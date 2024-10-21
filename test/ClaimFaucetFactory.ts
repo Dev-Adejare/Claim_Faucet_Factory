@@ -1,116 +1,144 @@
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import {
+  loadFixture,
+} from "@nomicfoundation/hardhat-toolbox/network-helpers";
+import { expect, should } from "chai";
+import { ethers } from "hardhat"; // Import ethers directly
+import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-ethers";
 
-describe("ClaimFaucetFactory", function () {
-  let ClaimFaucetFactory;
-  let claimFaucetFactory: { deployed: () => any; connect: (arg0: any) => { (): any; new(): any; deployClaimFaucet: { (arg0: string, arg1: string): any; new(): any; }; getUserDeployedContracts: { (): any; new(): any; }; getUserDeployedContractByIndex: { (arg0: number): [any, any] | PromiseLike<[any, any]>; new(): any; }; claimFaucetFromContract: { (arg0: any): any; new(): any; }; }; deployClaimFaucet: (arg0: string, arg1: string) => any; getAllContractDeployed: () => any; getLengthOfDeployedContracts: () => any; getInfoFromContract: (arg0: any) => [any, any] | PromiseLike<[any, any]>; };
-  let owner, user1: { address: any; }, user2: { address: any; };
+describe("Claim_Faucet_Factory", function () {
+
+  const token1:{name:string, symbol:string}= {
+    name: "SoliuToken",
+    symbol: "SLT"
+  }
+  const token2:{name:string, symbol:string}= {
+    name: "AfulannyToken",
+    symbol: "ALT"
+  }
+
+  async function deployClaimFaucetFactoryFixture() {
+    const  ClaimFaucetFactory = await ethers.getContractFactory("ClaimFaucetFactory");
+    const claimFaucetFactory = await ClaimFaucetFactory.deploy();
+
+    const [deployer, otherAccount] = await ethers.getSigners(); // Get signers
+
+
+    return { claimFaucetFactory, deployer, otherAccount};
+  }
   
-  // Assume ClaimFaucet and MockERC20 are other contract mocks we will need to test this contract
-  let ClaimFaucet;
-  let MockERC20;
-  let mockToken: { deployed: () => any; transfer: (arg0: any, arg1: number) => any; balanceOf: (arg0: any) => any; };
+  describe('Deploy', () => {
+    it("Should deploy claimaFaucetFactory correctly", async function name() {
 
-  beforeEach(async function () {
-    // Get the ContractFactory and Signers here.
-    ClaimFaucetFactory = await ethers.getContractFactory("ClaimFaucetFactory");
-    [owner, user1, user2] = await ethers.getSigners();
+      const {claimFaucetFactory} =  await loadFixture(deployClaimFaucetFactoryFixture);
 
-    // Deploy the factory contract
-    claimFaucetFactory = await ClaimFaucetFactory.deploy();
-    await claimFaucetFactory.deployed();
+      expect( await claimFaucetFactory.getAddress()).to.be.properAddress;
+      
+    });
 
-    // Deploy ClaimFaucet contract (assumed) and a mock token for tests
-    ClaimFaucet = await ethers.getContractFactory("ClaimFaucet");
-    MockERC20 = await ethers.getContractFactory("MockERC20");
-    mockToken = await MockERC20.deploy("TestToken", "TST", 1000);
-    await mockToken.deployed();
-  });
 
-  it("Should deploy a new ClaimFaucet contract", async function () {
-    const tx = await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet", "TFT");
-    const receipt = await tx.wait();
-    const event = receipt.events.find((event: { event: string; }) => event.event === "Deployed");
     
-    expect(event).to.not.be.undefined;
-    expect(event.args.deployer).to.equal(user1.address);
-    expect(event.args.deployedContract).to.not.equal(ethers.constants.AddressZero);
-
-    // Verify contract stored
-    const userDeployedContracts = await claimFaucetFactory.connect(user1).getUserDeployedContracts();
-    expect(userDeployedContracts.length).to.equal(1);
   });
 
-  it("Should revert on zero address deployment attempt", async function () {
-    await expect(
-      claimFaucetFactory.deployClaimFaucet("TestFaucet", "TFT")
-    ).to.be.revertedWith("Zero not allowed");
-  });
+  describe('Functions', () => {
+    it("should deploy ClaimFaucet contract correctly", async function () {
+      
+    
+      const {claimFaucetFactory, deployer} = await loadFixture(deployClaimFaucetFactoryFixture);
+      const deployedAddress =  await claimFaucetFactory.connect(deployer).deployClaimFaucet(token1.name, token1.symbol);
 
-  it("Should return all deployed contracts", async function () {
-    // Deploy multiple contracts
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet1", "TFT1");
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet2", "TFT2");
+       expect(deployedAddress).to.not.undefined;
+        expect((await claimFaucetFactory.connect(deployer).getUserDeployedContracts()).length).to.be.greaterThan(0);
 
-    const allContracts = await claimFaucetFactory.getAllContractDeployed();
-    expect(allContracts.length).to.equal(2);
-  });
+    });
 
-  it("Should return user's deployed contracts", async function () {
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet1", "TFT1");
-    await claimFaucetFactory.connect(user2).deployClaimFaucet("TestFaucet2", "TFT2");
+    
+    it("should be able to get a deployed contract deployed by a user", async function () {
 
-    const user1Contracts = await claimFaucetFactory.connect(user1).getUserDeployedContracts();
-    const user2Contracts = await claimFaucetFactory.connect(user2).getUserDeployedContracts();
+      const {claimFaucetFactory, deployer} = await loadFixture(deployClaimFaucetFactoryFixture);
 
-    expect(user1Contracts.length).to.equal(1);
-    expect(user2Contracts.length).to.equal(1);
-    expect(user1Contracts[0].deployer).to.equal(user1.address);
-    expect(user2Contracts[0].deployer).to.equal(user2.address);
-  });
+      await claimFaucetFactory.connect(deployer).deployClaimFaucet(token1.name, token1.symbol);
 
-  it("Should return user contract info by index", async function () {
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet", "TFT");
+      const [deployerAddr] = await claimFaucetFactory.connect(deployer).getUserDeployedContractByIndex(0);
 
-    const [deployer, deployedContract] = await claimFaucetFactory.connect(user1).getUserDeployedContractByIndex(0);
-    expect(deployer).to.equal(user1.address);
-    expect(deployedContract).to.not.equal(ethers.constants.AddressZero);
-  });
+      expect(deployerAddr).to.be.equal(deployer)
+      
+    }) 
 
-  it("Should return length of deployed contracts", async function () {
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet1", "TFT1");
-    await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet2", "TFT2");
+    it("should be able to get info", async function () {
+      const { claimFaucetFactory, deployer } = await loadFixture(deployClaimFaucetFactoryFixture);
+    
+      await claimFaucetFactory.connect(deployer).deployClaimFaucet(token1.name, token1.symbol);
+    
+     const [deployerAddr, deployedContractAddr] = await claimFaucetFactory.connect(deployer).getUserDeployedContractByIndex(0);
+    
+      const [fetchedName, fetchedSymbol] = await claimFaucetFactory.connect(deployer).getInfoFromContract(deployedContractAddr);
+    
+      expect(fetchedName).to.equal(token1.name);
+      expect(fetchedSymbol).to.equal(token1.symbol);
+    });
 
-    const length = await claimFaucetFactory.getLengthOfDeployedContracts();
-    expect(length).to.equal(2);
-  });
 
-  it("Should return token info from a deployed contract", async function () {
-    const tx = await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet", "TFT");
-    const receipt = await tx.wait();
-    const deployedAddress = receipt.events.find((event: { event: string; }) => event.event === "Deployed").args.deployedContract;
+    it("user should be able to claim token and confirm if it claimed", async function () {
+      const { claimFaucetFactory, deployer, otherAccount } = await loadFixture(deployClaimFaucetFactoryFixture);
+    
+      await claimFaucetFactory.deployClaimFaucet(token1.name, token1.symbol);
 
-    const [name, symbol] = await claimFaucetFactory.getInfoFromContract(deployedAddress);
-    expect(name).to.equal("TestFaucet");
-    expect(symbol).to.equal("TFT");
-  });
+      const [deployerAddr, deployedContractAddr] = await claimFaucetFactory.connect(deployer).getUserDeployedContractByIndex(0);
 
-  it("Should allow users to claim faucet tokens", async function () {
-    // Deploy a mock faucet contract
-    const tx = await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet", "TFT");
-    const receipt = await tx.wait();
-    const deployedAddress = receipt.events.find((event: { event: string; }) => event.event === "Deployed").args.deployedContract;
+      const initialClaimerBal = await claimFaucetFactory.connect(otherAccount).getBalanceFromDeployedContract(deployedContractAddr)
 
-    // Mint tokens to the ClaimFaucet (mock)
-    await mockToken.transfer(deployedAddress, 100);
 
-    await claimFaucetFactory.connect(user1).claimFaucetFromContract(deployedAddress);
+       const claimAmount = await claimFaucetFactory.connect(otherAccount).claimFaucetFromContract(deployedContractAddr)
 
-    const balance = await mockToken.balanceOf(user1.address);
-    expect(balance).to.be.above(0);
-  });
+       expect(claimAmount).to.not.undefined;
 
-  it("Should return user's token balance from a deployed contract", async function () {
-    const tx = await claimFaucetFactory.connect(user1).deployClaimFaucet("TestFaucet", "TFT");
-    const receipt = await tx.wait();
-    const deployedAddress = receipt.events.find((event: { event: string; }) => event.event === "Deployed")}
+       expect(await claimFaucetFactory.connect(otherAccount).getBalanceFromDeployedContract(deployedContractAddr)).to.be.greaterThan(initialClaimerBal)
+    
+      
+    });
+
+    it("should get all the deployed contracts on this  platform", async function () {
+      const { claimFaucetFactory, deployer, otherAccount } = await loadFixture(deployClaimFaucetFactoryFixture);
+    
+      await claimFaucetFactory.connect(deployer).deployClaimFaucet(token1.name, token1.symbol);
+      await claimFaucetFactory.connect(otherAccount).deployClaimFaucet(token2.name, token2.symbol);
+
+      const AllDeployedContracts = await claimFaucetFactory.getAllContractsDeployed();
+
+      expect(AllDeployedContracts.length).to.be.equal(2)
+
+      
+      
+    });
+
+
+    it("should get all the deployed contracts by a user", async function () {
+      const { claimFaucetFactory, otherAccount } = await loadFixture(deployClaimFaucetFactoryFixture);
+    
+      await claimFaucetFactory.connect(otherAccount).deployClaimFaucet(token1.name, token1.symbol);
+      await claimFaucetFactory.connect(otherAccount).deployClaimFaucet(token2.name, token2.symbol);
+
+      const AllDeployedContractsByAUSer = await claimFaucetFactory.connect(otherAccount).getUserDeployedContracts();
+
+      expect(AllDeployedContractsByAUSer.length).to.be.equal(2)
+
+      
+      
+    });
+    
+    
+  })
+  
+
+
+ 
+
+ 
+
+
+
+ 
+
+
+});
